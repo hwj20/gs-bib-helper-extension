@@ -193,34 +193,37 @@ function waitForBibtexUrl(doc, timeout = 3000) {
         win.addEventListener('load', () => resolve(), { once: true });
       });
     
-    window.addEventListener('message', e => {
+  const onMessage = async e => {
     if (e.data?.type !== 'MY_EXT_BIB_URL') return;
+
+    // 先把自己撤掉，确保只执行一次
+    window.removeEventListener('message', onMessage);
+
     const bibUrl = e.data.url;
     if (!bibUrl) {
-        showToast('❌ 没拿到 BibTeX URL');
-        return;
+      showToast('❌ 没拿到 BibTeX URL');
+      return;
     }
+
     win.close();
     console.log(bibUrl);
 
-     chrome.runtime.sendMessage({ action: 'fetchBib',url: bibUrl}, res => {
-            if (res.error) {
-              showToast('❌ 复制失败：' + res.error);
-              return;
-            }
-            const bib = res.bib;
-            console.log(bib);
-            const finish = () => {
-             appendToClipboard(bib);
-              showToast('✔️ BibTeX 已复制'); // 加数量
-            };
-            finish();
-          });
-          
-    showToast('✔️ 打开 BibTeX');
+    chrome.runtime.sendMessage({ action: 'fetchBib', url: bibUrl }, res => {
+      if (res.error) {
+        showToast('❌ 复制失败：' + res.error);
+        return;
+      }
+      const bib = res.bib;
+      appendToClipboard(bib);
+      showToast('✔️ BibTeX 已复制');
     });
 
- 
+    showToast('✔️ 打开 BibTeX');
+  };
+
+  // 在注入脚本前绑定
+  window.addEventListener('message', onMessage);
+
     const script = win.document.createElement('script');
     script.src = chrome.runtime.getURL('triggerCite.js');
     win.document.head.appendChild(script);
@@ -265,11 +268,87 @@ function injectGlobalButton() {
   btn.addEventListener('click', () => {
     const q = form.querySelector('input[name="q"]')?.value.trim();
     if (!q) return showToast('请输入搜索关键词');
+    const finish = () => {
+        copyWithTextarea("");
+    };
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText("").then(finish).catch(finish);
+    } else finish();
+
     fetchFirstBib(q);
   });
+  // 右键点击：批量模式
+  btn.addEventListener('contextmenu', e => {
+    e.preventDefault();
+
+    // 1. 创建遮罩层
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+      position: 'fixed', top:0, left:0, right:0, bottom:0,
+      background: 'rgba(0,0,0,0.5)', display:'flex',
+      alignItems:'center', justifyContent:'center', zIndex:10000
+    });
+
+    // 2. 创建对话框
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      background:'#fff', padding:'20px', borderRadius:'8px',
+      width:'400px', maxWidth:'90%', boxSizing:'border-box'
+    });
+
+    const ta = document.createElement('textarea');
+    Object.assign(ta.style, {
+      width:'100%', height:'150px', boxSizing:'border-box',
+      marginBottom:'10px', fontSize:'14px'
+    });
+    ta.placeholder = '每行一个标题，按换行分隔';
+
+    const go = document.createElement('button');
+    go.textContent = '开始批量获取';
+    Object.assign(go.style, {
+      padding:'8px 8px', cursor:'pointer',
+      background:'#4285F4', color:'#fff', border:'none',
+      borderRadius:'4px'
+    });
+
+    // 3. 点击「开始批量获取」
+    go.addEventListener('click', () => {
+      const lines = ta.value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+      if (lines.length === 0) {
+        showToast('请输入至少一个标题');
+        return;
+      }
+        const finish = () => {
+            copyWithTextarea("");
+        };
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText("").then(finish).catch(finish);
+        } else finish();
+
+      // 依次调用 fetchFirstBib，每次间隔 2s（防止同时打开过多窗口）
+      lines.forEach((title, i) => {
+        setTimeout(() => fetchFirstBib(title), i * 2000);
+      });
+      document.body.removeChild(overlay);
+      showToast(`已开始批量处理 ${lines.length} 条`);
+    });
+
+    // 4. 取消对话框时点遮罩层空白
+    overlay.addEventListener('click', ev => {
+      if (ev.target === overlay) document.body.removeChild(overlay);
+    });
+
+    dialog.appendChild(ta);
+    dialog.appendChild(go);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+  });
+
+
 }
-
-
 
   // 启动两个观察者
   new MutationObserver(injectGlobalButton).observe(document.body, observerConfig);
