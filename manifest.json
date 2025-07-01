@@ -18,6 +18,10 @@
   },
   "content_scripts": [
     {
+    "matches": ["*://scholar.google.com/*"],
+    "js": ["content.js"]
+    },
+    {
       "matches": ["https://scholar.google.com/scholar*"],
       "js": ["content.js"],
       "run_at": "document_idle"
