@@ -2,6 +2,8 @@
 
 **IMPORTANT**: All buttons in this extension will **overwrite your clipboard content** upon use.
 
+**If it cannot work, it might be blocked by Google. Just refresh the page with F5.**
+
 A lightweight browser extension designed to improve your Google Scholar workflow. Whether you're managing references or doing academic research, this tool lets you quickly grab BibTeX entries with a single click.
 
 ---
@@ -46,7 +48,7 @@ If the extension is not yet in the Chrome Web Store, you can manually install it
 4. Click **"Load unpacked"**.
 5. Select the folder where you extracted the ZIP.
 
-That's it! Now go to [Google Scholar](https://scholar.google.com) and enjoy the magic. ✨
+That's it! Now go to [Google Scholar](https://scholar.google.com) and enjoy your academic career. ✨
 
 ---
 
