@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Batch Bib Generator</title>
+</head>
+<body style="font-family:sans-serif;padding:10px;">
+  <h4>Batch Bib Generator</h4>
+  <!-- 批量输入框：每行一个查询 -->
+  <textarea id="queries" rows="8" cols="40"
+    placeholder="Enter one search per line"></textarea>
+  <div style="margin-top:5px;">
+    <!-- 生成按钮 & 自动复制开关 -->
+    <button id="generate">Generate Bib</button>
+    <input type="checkbox" id="autoCopyPopup">
+    <label for="autoCopyPopup">Auto Copy All</label>
+  </div>
+  <!-- 展示所有 BibTeX 结果 -->
+  <textarea id="bibResults" rows="8" cols="40"
+    style="margin-top:5px;"></textarea>
+  <!-- 绑定逻辑的脚本 -->
+  <script src="popup.js"></script>
+</body>
+</html>
+

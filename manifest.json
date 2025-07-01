@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Google Scholar Bib Helper",
+  "version": "1.0.0",
+  "permissions": [
+    "activeTab",
+     "scripting",
+     "clipboardWrite",
+     "contextMenus",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://scholar.google.com/*",
+    "https://scholar.googleusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://scholar.google.com/scholar*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Batch Bib Generator"
+  }
+}
