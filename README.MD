@@ -34,7 +34,7 @@ Right-click the global green **BibTeX** button to enter batch mode.
 You’ll see a popup where you can enter multiple titles (one per line). The extension will then process them one by one, opening Google Scholar in new tabs and copying the BibTeX entries for each.
 
 🖼️ *Example screenshot:*  
-![Batch Mode Dialog](./screenshots/batch-mode-dialog.png)
+![Batch Mode Dialog](./screenshots/batch_retrieval.gif)
 
 ---
 
@@ -48,7 +48,7 @@ If the extension is not yet in the Chrome Web Store, you can manually install it
 4. Click **"Load unpacked"**.
 5. Select the folder where you extracted the ZIP.
 
-That's it! Now go to [Google Scholar](https://scholar.google.com) and enjoy your academic career. ✨
+That's it! Now go to [Google Scholar](https://scholar.google.com) and enjoy your academical career. ✨
 
 ---
 
