@@ -230,37 +230,46 @@ function waitForBibtexUrl(doc, timeout = 3000) {
       showToast('❌ ' + e.message);
     }
   }
+function injectGlobalButton() {
+  const form = document.getElementById('gs_hdr_frm');
+  if (!form || document.getElementById('firstBibGlobalBtn')) return;
 
-  // —— 修改：按钮点击时把 q 传给 fetchFirstBib —— 
-  function injectGlobalButton() {
-    const form = document.getElementById('gs_hdr_frm');
-    if (!form || document.getElementById('firstBibGlobalBtn')) return;
-    const submit = form.querySelector('button[type="submit"], input[type="submit"]');
-    if (!submit) return;
+  // 把 form 设成 inline-flex，保证水平对齐
+  form.style.display = 'inline-flex';
+  form.style.alignItems = 'center';
 
-    const btn = document.createElement('button');
-    btn.id = 'firstBibGlobalBtn';
-    btn.type = 'button';
-    btn.textContent = 'Get 1st BibTeX';
-    btn.style.cssText = `
-      margin-left: 8px;
-      padding: 6px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      background-color: #34A853;
-      color: #fff;
-    `;
-    submit.parentNode.insertBefore(btn, submit.nextSibling);
+  // 找到所有 submit 元素，取最后一个（通常就是蓝色放大镜）
+  const submits = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+  if (!submits.length) return;
+  const searchBtn = submits[submits.length - 1];
 
-    btn.addEventListener('click', () => {
-      const q = form.querySelector('input[name="q"]')?.value.trim();
-      if (!q) return showToast('请输入搜索关键词');
-      // 把 q 传给 fetchFirstBib，打开新窗口并加载搜索结果
-      fetchFirstBib(q);
-    });
-  }
+  const btn = document.createElement('button');
+  btn.id = 'firstBibGlobalBtn';
+  btn.type = 'button';
+  btn.textContent = 'BibTeX';
+  btn.style.cssText = `
+    margin-left:6px;
+    margin-right:6px;
+    padding:6px 12px;
+    font-size:14px;
+    cursor:pointer;
+    border:none;
+    border-radius:4px;
+    background-color:#34A853;
+    color:#fff;
+  `;
+
+  // 把绿按钮插到蓝色搜索按钮后面
+  searchBtn.insertAdjacentElement('afterend', btn);
+
+  btn.addEventListener('click', () => {
+    const q = form.querySelector('input[name="q"]')?.value.trim();
+    if (!q) return showToast('请输入搜索关键词');
+    fetchFirstBib(q);
+  });
+}
+
+
 
   // 启动两个观察者
   new MutationObserver(injectGlobalButton).observe(document.body, observerConfig);
