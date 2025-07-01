@@ -22,7 +22,7 @@ function waitForBibtexUrl(doc, timeout = 3000) {
         resolve(u);
       } else if (Date.now() - start > timeout) {
         mo.disconnect();
-        reject(new Error('等待 BibTeX 链接超时'));
+        reject(new Error('Timeout when fetching bib Url'));
       }
     });
     mo.observe(doc.body, { childList: true, subtree: true });
@@ -48,10 +48,8 @@ function waitForBibtexUrl(doc, timeout = 3000) {
 };
 
 
-// 立即执行并 postMessage 给 content script
 ;(async()=>{
   const url = await returnBibURL();
-    // 发给原窗口
   if (window.opener) {
     window.opener.postMessage({ type: 'MY_EXT_BIB_URL', url }, '*');
   }

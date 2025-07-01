@@ -1,11 +1,12 @@
 // content.js
-// 在谷歌学术搜索结果页，为每个结果注入 “CopyBib” 按钮；
-// 并在搜索框旁注入 “Get First BibTeX” 按钮，自动抓取第一个结果的 BibTeX
+// On the Google Scholar search results page, inject a "CopyBib" button for each result;
+// and inject a "Get First BibTeX" button next to the search box to automatically fetch the BibTeX of the first result
+
 
 (() => {
   const observerConfig = { childList: true, subtree: true };
 
-  // —— 非阻塞 toast —— 
+ // —— Non-blocking toast ——
   function showToast(msg) {
     const toast = document.createElement('div');
     toast.textContent = msg;
@@ -30,24 +31,20 @@
     }, 3000);
   }
 async function appendToClipboard(newText) {
-  // 先试现代剪贴板 API
   if (navigator.clipboard?.readText && navigator.clipboard?.writeText) {
     try {
-      // 直接在 click 处理器里调用，确保是用户手势
       const oldText = await navigator.clipboard.readText();
-      const combined = oldText + '\n' + newText;   // 在两者之间加换行
+      const combined = oldText + '\n' + newText;   
       await navigator.clipboard.writeText(combined);
       return;
     } catch (err) {
-      console.warn('Clipboard API 读写失败，切换到 fallback:', err);
+      console.warn('Clipboard API error, fallback:', err);
     }
   }
-  // Fallback：用 textarea + execCommand
   const ta = document.createElement('textarea');
   document.body.appendChild(ta);
   ta.style.position = 'fixed'; ta.style.opacity = '0';
   ta.focus();
-  // 尝试把系统剪贴板粘贴进 textarea
   document.execCommand('paste');
   const oldText = ta.value;
   ta.value = oldText + '\n' + newText;
@@ -57,7 +54,7 @@ async function appendToClipboard(newText) {
 }
 
 
-  // 复制文本到剪贴板（fallback）
+  // Copy text to clipboard (fallback)
   function copyWithTextarea(text) {
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -70,7 +67,7 @@ async function appendToClipboard(newText) {
     ta.remove();
   }
 
-  // 关闭 Scholar “引用” 弹层
+ // Close the Scholar "Cite" popup
   function closePopup() {
     const cancelBtn = document.querySelector('#gs_cit-x');
     if (cancelBtn) cancelBtn.click();
@@ -78,7 +75,7 @@ async function appendToClipboard(newText) {
     //   .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
   }
 
-  // 模拟点击 citeLink，不导航
+  // Simulate clicking citeLink without navigation
   function triggerCite(link) {
     const orig = link.getAttribute('href');
     link.removeAttribute('href');
@@ -89,7 +86,7 @@ async function appendToClipboard(newText) {
     if (orig !== null) link.setAttribute('href', orig);
   }
 
-// —— 修改：让 waitForBibtexUrl 接收一个 doc 参数 —— 
+  // —— Modification: let waitForBibtexUrl accept a doc parameter ——
 function waitForBibtexUrl(doc, timeout = 3000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -104,7 +101,7 @@ function waitForBibtexUrl(doc, timeout = 3000) {
         resolve(u);
       } else if (Date.now() - start > timeout) {
         mo.disconnect();
-        reject(new Error('等待 BibTeX 链接超时'));
+        reject(new Error('Timeout while waiting for BibTeX link'));
       }
     });
     mo.observe(doc.body, { childList: true, subtree: true });
@@ -112,7 +109,7 @@ function waitForBibtexUrl(doc, timeout = 3000) {
 }
 
 
-  // 为每条结果注入“BibTeX”按钮
+  // Inject "BibTeX" button for each result
   function injectButtons() {
     document.querySelectorAll('.gs_ri').forEach(item => {
       if (item.dataset.bibBtnAdded) return;
@@ -152,16 +149,17 @@ function waitForBibtexUrl(doc, timeout = 3000) {
         try {
           triggerCite(citeLink);
           const url = await waitForBibtexUrl(document);
+          closePopup();
           chrome.runtime.sendMessage({ action: 'fetchBib',url: url }, res => {
             if (res.error) {
-              showToast('❌ 复制失败：' + res.error);
+              showToast('❌ Copy failed: ' + res.error);
               return;
             }
             const bib = res.bib;
             const finish = () => {
              window.location.replace(window.location.href);
               copyWithTextarea(bib);
-              showToast('✔️ BibTeX 已复制');
+              showToast('✔️ BibTeX copied');
             };
             if (navigator.clipboard?.writeText) {
               navigator.clipboard.writeText(bib).then(finish).catch(finish);
@@ -169,10 +167,12 @@ function waitForBibtexUrl(doc, timeout = 3000) {
           });
         } catch (err) {
           document.getElementById('hidePopup')?.remove();
+          closePopup();
           console.error(err);
-          showToast('❌ 操作失败：' + err.message);
+          showToast('❌ Operation failed:' + err.message);
         }
         finally{
+            hideStyle.remove();
         }
       });
 
@@ -180,15 +180,14 @@ function waitForBibtexUrl(doc, timeout = 3000) {
     });
   }
 
-// —— 修改：fetchFirstBib 接收关键词 q，并打开新窗口取 document —— 
+  // —— Modification: fetchFirstBib accepts keyword q and opens new window to get document ——
   async function fetchFirstBib(q) {
     try {
-      if (!q) throw new Error('未提供搜索关键词');
+      if (!q) throw new Error('No search keyword provided');
       const url = `https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`;
-      // 打开一个新窗口
+      // New window
       const win = window.open(url, '_blank');
-      if (!win) throw new Error('无法打开新窗口');
-      // 等待页面 load 完成
+      if (!win) throw new Error('Unable to open new window');
       await new Promise(resolve => {
         win.addEventListener('load', () => resolve(), { once: true });
       });
@@ -196,12 +195,11 @@ function waitForBibtexUrl(doc, timeout = 3000) {
   const onMessage = async e => {
     if (e.data?.type !== 'MY_EXT_BIB_URL') return;
 
-    // 先把自己撤掉，确保只执行一次
     window.removeEventListener('message', onMessage);
 
     const bibUrl = e.data.url;
     if (!bibUrl) {
-      showToast('❌ 没拿到 BibTeX URL');
+      showToast('❌ Failed to get BibTeX URL');
       return;
     }
 
@@ -210,18 +208,16 @@ function waitForBibtexUrl(doc, timeout = 3000) {
 
     chrome.runtime.sendMessage({ action: 'fetchBib', url: bibUrl }, res => {
       if (res.error) {
-        showToast('❌ 复制失败：' + res.error);
+        showToast('❌ Copy failed: ' + res.error);
         return;
       }
       const bib = res.bib;
       appendToClipboard(bib);
-      showToast('✔️ BibTeX 已复制');
+      showToast('✔️ BibTeX copied');
     });
 
-    showToast('✔️ 打开 BibTeX');
   };
 
-  // 在注入脚本前绑定
   window.addEventListener('message', onMessage);
 
     const script = win.document.createElement('script');
@@ -233,15 +229,16 @@ function waitForBibtexUrl(doc, timeout = 3000) {
       showToast('❌ ' + e.message);
     }
   }
+
 function injectGlobalButton() {
   const form = document.getElementById('gs_hdr_frm');
   if (!form || document.getElementById('firstBibGlobalBtn')) return;
 
-  // 把 form 设成 inline-flex，保证水平对齐
+   // Set form to inline-flex for horizontal alignment
   form.style.display = 'inline-flex';
   form.style.alignItems = 'center';
 
-  // 找到所有 submit 元素，取最后一个（通常就是蓝色放大镜）
+ // Find all submit elements, take the last one (usually the blue magnifying glass)
   const submits = form.querySelectorAll('button[type="submit"], input[type="submit"]');
   if (!submits.length) return;
   const searchBtn = submits[submits.length - 1];
@@ -262,12 +259,12 @@ function injectGlobalButton() {
     color:#fff;
   `;
 
-  // 把绿按钮插到蓝色搜索按钮后面
+   // Insert the green button after the blue search button
   searchBtn.insertAdjacentElement('afterend', btn);
 
   btn.addEventListener('click', () => {
     const q = form.querySelector('input[name="q"]')?.value.trim();
-    if (!q) return showToast('请输入搜索关键词');
+    if (!q) return showToast('Please enter search keyword');
     const finish = () => {
         copyWithTextarea("");
     };
@@ -277,11 +274,11 @@ function injectGlobalButton() {
 
     fetchFirstBib(q);
   });
-  // 右键点击：批量模式
+  // Right-click: batch mode
   btn.addEventListener('contextmenu', e => {
     e.preventDefault();
 
-    // 1. 创建遮罩层
+      // 1. Create overlay
     const overlay = document.createElement('div');
     Object.assign(overlay.style, {
       position: 'fixed', top:0, left:0, right:0, bottom:0,
@@ -289,7 +286,7 @@ function injectGlobalButton() {
       alignItems:'center', justifyContent:'center', zIndex:10000
     });
 
-    // 2. 创建对话框
+   // 2. Create dialog
     const dialog = document.createElement('div');
     Object.assign(dialog.style, {
       background:'#fff', padding:'20px', borderRadius:'8px',
@@ -301,24 +298,24 @@ function injectGlobalButton() {
       width:'100%', height:'150px', boxSizing:'border-box',
       marginBottom:'10px', fontSize:'14px'
     });
-    ta.placeholder = '每行一个标题，按换行分隔';
+    ta.placeholder = 'One title per line, separated by line breaks';
 
     const go = document.createElement('button');
-    go.textContent = '开始批量获取';
+    go.textContent = 'Batch retrieval';
     Object.assign(go.style, {
       padding:'8px 8px', cursor:'pointer',
       background:'#4285F4', color:'#fff', border:'none',
       borderRadius:'4px'
     });
 
-    // 3. 点击「开始批量获取」
+    // 3 Batch retrieval
     go.addEventListener('click', () => {
       const lines = ta.value
         .split('\n')
         .map(s => s.trim())
         .filter(Boolean);
       if (lines.length === 0) {
-        showToast('请输入至少一个标题');
+        showToast('Please enter at least one title');
         return;
       }
         const finish = () => {
@@ -328,7 +325,7 @@ function injectGlobalButton() {
             navigator.clipboard.writeText("").then(finish).catch(finish);
         } else finish();
 
-      // 依次调用 fetchFirstBib，每次间隔 2s（防止同时打开过多窗口）
+    // Call fetchFirstBib one by one, 2s interval (prevent too many windows at once)
       lines.forEach((title, i) => {
         setTimeout(() => fetchFirstBib(title), i * 2000);
       });
@@ -336,7 +333,7 @@ function injectGlobalButton() {
       showToast(`已开始批量处理 ${lines.length} 条`);
     });
 
-    // 4. 取消对话框时点遮罩层空白
+    // 4. Cancel dialog by clicking blank area of overlay
     overlay.addEventListener('click', ev => {
       if (ev.target === overlay) document.body.removeChild(overlay);
     });
@@ -350,10 +347,9 @@ function injectGlobalButton() {
 
 }
 
-  // 启动两个观察者
   new MutationObserver(injectGlobalButton).observe(document.body, observerConfig);
   new MutationObserver(injectButtons).observe(document.body, observerConfig);
-  // 初次执行
+  
   injectGlobalButton();
   injectButtons();
 })();
