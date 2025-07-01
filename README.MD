@@ -14,7 +14,8 @@ A lightweight browser extension designed to improve your Google Scholar workflow
 Each search result on Google Scholar will include an extra button labeled **BibTeX** 📋, allowing you to directly copy the BibTeX entry to your clipboard without opening any citation dialog.
 
 🖼️ *Example screenshot:*  
-![Per-item BibTeX Button](./screenshots/bib_search.gif)
+<img src="./screenshots/bib_search.gif" width="600"/>
+<!-- ![Per-item BibTeX Button](./screenshots/bib_search.gif) -->
 
 ---
 
@@ -24,7 +25,8 @@ Adds a green **BibTeX** button next to the search bar at the top of the Google S
 Clicking it will automatically grab the BibTeX entry of the **first search result**.
 
 🖼️ *Example screenshot:*  
-![Global BibTeX Button](./screenshots/insert_bib_button.gif)
+<img src="./screenshots/insert_bib_button.gif" width="600"/>
+<!-- ![Global BibTeX Button](./screenshots/insert_bib_button.gif) -->
 
 ---
 
