@@ -34,7 +34,7 @@ Right-click the global green **BibTeX** button to enter batch mode.
 You’ll see a popup where you can enter multiple titles (one per line). The extension will then process them one by one, opening Google Scholar in new tabs and copying the BibTeX entries for each.
 
 🖼️ *Example screenshot:*  
-<img src="./screenshots/batch_retrieval.gif" width="350"/>
+<img src="./screenshots/batch_retrieval.gif" width="600"/>
 <!-- ![Batch Mode Dialog](./screenshots/batch_retrieval.gif) -->
 
 ---
