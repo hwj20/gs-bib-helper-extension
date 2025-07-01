@@ -29,6 +29,33 @@
       setTimeout(() => toast.remove(), 300);
     }, 3000);
   }
+async function appendToClipboard(newText) {
+  // 先试现代剪贴板 API
+  if (navigator.clipboard?.readText && navigator.clipboard?.writeText) {
+    try {
+      // 直接在 click 处理器里调用，确保是用户手势
+      const oldText = await navigator.clipboard.readText();
+      const combined = oldText + '\n' + newText;   // 在两者之间加换行
+      await navigator.clipboard.writeText(combined);
+      return;
+    } catch (err) {
+      console.warn('Clipboard API 读写失败，切换到 fallback:', err);
+    }
+  }
+  // Fallback：用 textarea + execCommand
+  const ta = document.createElement('textarea');
+  document.body.appendChild(ta);
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  ta.focus();
+  // 尝试把系统剪贴板粘贴进 textarea
+  document.execCommand('paste');
+  const oldText = ta.value;
+  ta.value = oldText + '\n' + newText;
+  ta.select();
+  document.execCommand('copy');
+  ta.remove();
+}
+
 
   // 复制文本到剪贴板（fallback）
   function copyWithTextarea(text) {
@@ -47,8 +74,8 @@
   function closePopup() {
     const cancelBtn = document.querySelector('#gs_cit-x');
     if (cancelBtn) cancelBtn.click();
-    ['#gs_cit','#gs_md_cit-overlay','.gs_md_dock_wrapper','.gs_citr','.gs_ocd_citr']
-      .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
+    // ['#gs_cit','#gs_md_cit-overlay','.gs_md_dock_wrapper','.gs_citr','.gs_ocd_citr']
+    //   .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
   }
 
   // 模拟点击 citeLink，不导航
@@ -62,7 +89,6 @@
     if (orig !== null) link.setAttribute('href', orig);
   }
 
-  // 等待并提取 .bib 链接
 // —— 修改：让 waitForBibtexUrl 接收一个 doc 参数 —— 
 function waitForBibtexUrl(doc, timeout = 3000) {
   return new Promise((resolve, reject) => {
@@ -126,12 +152,9 @@ function waitForBibtexUrl(doc, timeout = 3000) {
         try {
           triggerCite(citeLink);
           const url = await waitForBibtexUrl(document);
-          hideStyle.remove();
-          closePopup();
-          chrome.runtime.sendMessage({ action: 'fetchBib', url }, res => {
+          chrome.runtime.sendMessage({ action: 'fetchBib',url: url }, res => {
             if (res.error) {
               showToast('❌ 复制失败：' + res.error);
-              closePopup();
               return;
             }
             const bib = res.bib;
@@ -139,7 +162,6 @@ function waitForBibtexUrl(doc, timeout = 3000) {
              window.location.replace(window.location.href);
               copyWithTextarea(bib);
               showToast('✔️ BibTeX 已复制');
-              closePopup();
             };
             if (navigator.clipboard?.writeText) {
               navigator.clipboard.writeText(bib).then(finish).catch(finish);
@@ -149,7 +171,8 @@ function waitForBibtexUrl(doc, timeout = 3000) {
           document.getElementById('hidePopup')?.remove();
           console.error(err);
           showToast('❌ 操作失败：' + err.message);
-          closePopup();
+        }
+        finally{
         }
       });
 
@@ -169,52 +192,39 @@ function waitForBibtexUrl(doc, timeout = 3000) {
       await new Promise(resolve => {
         win.addEventListener('load', () => resolve(), { once: true });
       });
+    
+    window.addEventListener('message', e => {
+    if (e.data?.type !== 'MY_EXT_BIB_URL') return;
+    const bibUrl = e.data.url;
+    if (!bibUrl) {
+        showToast('❌ 没拿到 BibTeX URL');
+        return;
+    }
+    win.close();
+    console.log(bibUrl);
 
-      const doc = win.document;  // 这里就拿到新窗口的 document
-      showToast(`已在新窗口打开 Google Scholar 并加载 "${q}" 的搜索结果`);
+     chrome.runtime.sendMessage({ action: 'fetchBib',url: bibUrl}, res => {
+            if (res.error) {
+              showToast('❌ 复制失败：' + res.error);
+              return;
+            }
+            const bib = res.bib;
+            console.log(bib);
+            const finish = () => {
+             appendToClipboard(bib);
+              showToast('✔️ BibTeX 已复制'); // 加数量
+            };
+            finish();
+          });
+          
+    showToast('✔️ 打开 BibTeX');
+    });
 
-      // 以下就是在新窗口里抓第一个结果 Cite 按钮并模拟点击的逻辑
-      const first = doc.querySelector('.gs_ri');
-      if (!first) throw new Error('未找到搜索结果');
-      const citeLink = first.querySelector('.gs_or_cit');
-      if (!citeLink) throw new Error('未找到 Cite 按钮');
-
-      showToast('正在获取第一个结果的 BibTeX…');
-
-      // 隐藏弹层样式
-      let hideStyle = doc.getElementById('hidePopup');
-      if (!hideStyle) {
-        hideStyle = doc.createElement('style');
-        hideStyle.id = 'hidePopup';
-        hideStyle.textContent = `
-          #gs_cit,#gs_md_cit-overlay,
-          .gs_md_dock_wrapper,.gs_citr,.gs_ocd_citr {
-            display: none !important;
-          }
-        `;
-        doc.head.appendChild(hideStyle);
-      }
-
-      // 模拟点击弹出 Cite 弹层
-      triggerCite.call(win, citeLink);
-      // 等待 .bib 链接出现
-      const bibUrl = await waitForBibtexUrl.call(doc);
-      hideStyle.remove();
-      closePopup.call(win);
-
-      // 用现有的后台 fetchBib 去下载并复制
-      chrome.runtime.sendMessage({ action: 'fetchBib', url: bibUrl }, res => {
-        if (res.error) return showToast('❌ 复制失败：' + res.error);
-        const bib = res.bib;
-        // 复制并提示
-        if (navigator.clipboard?.writeText) {
-          navigator.clipboard.writeText(bib).then(() => showToast('✔️ 第一个 BibTeX 已复制'));
-        } else {
-          copyWithTextarea(bib);
-          showToast('✔️ 第一个 BibTeX 已复制');
-        }
-      });
-
+ 
+    const script = win.document.createElement('script');
+    script.src = chrome.runtime.getURL('triggerCite.js');
+    win.document.head.appendChild(script);
+    
     } catch (e) {
       console.error(e);
       showToast('❌ ' + e.message);
