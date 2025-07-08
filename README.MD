@@ -1,5 +1,8 @@
 # 📚 Scholar BibTeX Helper
 
+Intallation:
+https://chromewebstore.google.com/detail/ipnfjcndgnngepbnibkejpdndilhpfam?utm_source=item-share-cb
+
 **IMPORTANT**: All buttons in this extension will **overwrite your clipboard content** upon use.
 
 **If it cannot work, it might be blocked by Google. Just refresh the page with F5.**
@@ -61,14 +64,6 @@ That's it! Now go to [Google Scholar](https://scholar.google.com) and enjoy your
 - This extension is **non-intrusive** and only modifies the Google Scholar search results page.
 - All BibTeX content is copied directly to your clipboard.
 - No data is collected, and everything runs locally in your browser.
-
----
-
-## 📬 Coming Soon
-
-✅ Publishing to Chrome Web Store  
-✅ Optional settings panel  
-✅ Better UI customization  
 
 ---
 
